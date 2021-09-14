@@ -1,0 +1,125 @@
+<!doctype html>
+
+<html>
+
+<head>
+    <title>url resolver dot com</title>
+    <link rel="stylesheet" href="style.css">
+    <meta charset="utf8">
+    <script>
+        const App = (function () {
+            const givenURL = (new URLSearchParams(window.location.search)).get("url");
+            const isLocalhost = /^localho\.?st$/.test(window.location.hostname);
+            const apiURL = isLocalhost ?
+                `${window.location.protocol}//${window.location.hostname}:8080` :
+                "https://api.urlresolver.com";
+
+            async function resolve(givenURL) {
+                const params = new URLSearchParams();
+                params.set("url", givenURL);
+                const reqURL = `${apiURL}/resolve?${params.toString()}`;
+
+                let resp = await fetch(reqURL);
+                console.log(resp);
+                let results = await resp.json();
+                console.log(results);
+                return results;
+            }
+
+            function render(target, results) {
+                const parts = [];
+                parts.push(`
+                    <div class="given url">${givenURL}</div>
+                `);
+                if (results.error !== undefined) {
+                    parts.push(`
+                        <div class="resolved url error"><b>Error:</b> ${results.error}</div>
+                    `);
+                    target.innerHTML = parts.join("\n");
+                    return;
+                }
+
+                results.intermediate_urls.forEach(url => {
+                    if (url === results.given_url) {
+                        return;
+                    }
+                    parts.push(`
+                        <div class="intermediate url">${url}</div>
+                    `);
+                });
+                parts.push(`<div class="resolved url">`);
+                if (results.title) {
+                    parts.push(`<div class="title">${results.title}</div>`);
+                }
+                parts.push(`<a href="${results.resolved_url}">${results.resolved_url}</a>`);
+
+                parts.push('</div>');
+
+                target.innerHTML = parts.join("\n");
+            }
+
+            function toggle(el, isOn) {
+                console.log("toggling", el, isOn);
+                el.style.display = isOn ? "block" : "none";
+            }
+
+            return {
+                givenURL: givenURL,
+                hasGivenURL: !!givenURL,
+                render: render,
+                resolve: resolve,
+                toggle: toggle,
+            };
+        })();
+    </script>
+</head>
+
+<body>
+    <header>
+        <h1><a href="/">✨ url resolver ✨</a></h1>
+    </header>
+
+    <section id="input" style="display: none;">
+        <form method="GET" action="">
+            <input type="url" name="url" placeholder="Gimme a short URL">
+            <input type="submit" value="Resolve">
+        </form>
+
+        <header>
+            <h2>what is this?</h2>
+        </header>
+        <p>Enter a shortened or otherwise obfuscated URL (e.g. a bit.ly or t.co
+            link) and get back the final destination URL.</p>
+        <p>Example: <a href="?url=https://t.co/1AuEh8FMK0?amp=1">https://t.co/1AuEh8FMK0?amp=1</a></p>
+    </section>
+    <script>App.toggle(document.getElementById("input"), !App.hasGivenURL);</script>
+
+    <section id="results" style="display: none;">
+        <script>
+            if (App.hasGivenURL) {
+                document.writeln(`
+                    <div class="given url">${App.givenURL}</div>
+                    <div class="resolving url">🤔 resolving …</div>
+                `);
+            }
+        </script>
+    </section>
+    <script>
+        const target = document.getElementById("results");
+        App.toggle(target, App.hasGivenURL);
+        if (App.hasGivenURL) {
+            App.resolve(App.givenURL).then(results => {
+                App.render(target, results);
+            }, err => {
+                App.render(target, { error: err });
+            });
+        }
+    </script>
+
+    <section id="back" style="display: none">
+        <a href="/">← Resolve another</a>
+    </section>
+    <script>App.toggle(document.getElementById("back"), App.hasGivenURL);</script>
+</body>
+
+</html>
