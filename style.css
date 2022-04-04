@@ -122,6 +122,7 @@ h2 {
     padding: 1rem;
     margin: 3rem 0;
     position: relative;
+    word-break: break-word;
 }
 
 #results .url::before, #results3 .url::after {
